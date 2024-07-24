@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Interface</title>
+    <style>
+        /* Add your CSS styles here */
+        body {
+            font-family: 'Arial', sans-serif;
+        }
+        #chat-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #FFFFFF;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 350px;
+            max-width: 90%;
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        #chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        #chat-header h2 {
+            font-family: 'Arial', sans-serif;
+        }
+        .chat-option {
+            padding: 10px 20px;
+            border: none;
+            background-color: #E0E0E0;
+            color: #000;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .chat-option.active {
+            background-color: #40BA21;
+            color: #FFFFFF;
+        }
+        #messages {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .message.user {
+            background-color: #b2fab4;
+            align-self: flex-end;
+            text-align: right;
+        }
+        .message.ai {
+            background-color: #e3e9ef;
+            align-self: flex-start;
+            text-align: left;
+        }
+        #input-container {
+            display: flex;
+        }
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #send-btn {
+            padding: 10px 20px;
+            border: none;
+            background-color: #40BA21;
+            color: #FFFFFF;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-family: 'Arial', sans-serif;
+        }
+        #open-chat-btn {
+            position: fixed;
+            bottom: 120px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background-color: #40BA21;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-header">
+            <h2>AI Chat</h2>
+            <div>
+                <button id="ai-chat-btn" class="chat-option active">AI Chat</button>
+                <button id="nlp-btn" class="chat-option">NLP</button>
+            </div>
+            <button id="close-chat-btn">←</button>
+        </div>
+        <div id="messages"></div>
+        <div id="input-container">
+            <input type="text" id="user-input" placeholder="Type a message...">
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+    <button id="open-chat-btn">💬</button>
+    
+    <script>
+        document.getElementById('open-chat-btn').addEventListener('click', function() {
+            document.getElementById('chat-container').style.display = 'flex';
+            document.getElementById('open-chat-btn').style.display = 'none';
+            loadMessages();
+        });
+
+        document.getElementById('close-chat-btn').addEventListener('click', function() {
+            document.getElementById('chat-container').style.display = 'none';
+            document.getElementById('open-chat-btn').style.display = 'flex';
+        });
+
+        document.getElementById('send-btn').addEventListener('click', sendMessage);
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        const aiChatBtn = document.getElementById('ai-chat-btn');
+        const nlpBtn = document.getElementById('nlp-btn');
+
+        aiChatBtn.addEventListener('click', function() {
+            setActiveOption('AI Chat');
+        });
+
+        nlpBtn.addEventListener('click', function() {
+            setActiveOption('NLP');
+        });
+
+        function setActiveOption(option) {
+            if (option === 'AI Chat') {
+                aiChatBtn.classList.add('active');
+                nlpBtn.classList.remove('active');
+            } else if (option === 'NLP') {
+                aiChatBtn.classList.remove('active');
+                nlpBtn.classList.add('active');
+            }
+        }
+
+        function sendMessage() {
+            const userInput = document.getElementById('user-input').value;
+            if (userInput.trim() === '') return;
+
+            addMessage('user', userInput);
+            document.getElementById('user-input').value = '';
+
+            const activeOption = aiChatBtn.classList.contains('active') ? 'ai-chat' : 'nlp';
+            const endpoint = activeOption === 'ai-chat' ? '/chat/' : '/nlp/';
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: userInput })
+            })
+            .then(response => response.json())
+            .then(data => {
+                addMessage('ai', data.response);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function addMessage(sender, message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+            messageDiv.textContent = message;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            saveMessages();
+        }
+
+        function saveMessages() {
+            const messagesDiv = document.getElementById('messages');
+            const messages = [];
+            messagesDiv.querySelectorAll('.message').forEach(messageDiv => {
+                messages.push({
+                    sender: messageDiv.classList.contains('user') ? 'user' : 'ai',
+                    text: messageDiv.textContent
+                });
+            });
+            localStorage.setItem('chatMessages', JSON.stringify(messages));
+        }
+
+        function loadMessages() {
+            const messagesDiv = document.getElementById('messages');
+            const messages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+            messagesDiv.innerHTML = '';
+            messages.forEach(message => {
+                addMessage(message.sender, message.text);
+            });
+        }
+    </script>
+</body>
+</html>
